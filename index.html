@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VELUM – Premium Roblox script protection</title>
+<meta name="description" content="VELUM protects Roblox scripts with challenge-response authentication, HWID binding and signed delivery from the edge.">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 6h6l6 14 6-14h6L16 28z' fill='%238b5cf6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  tailwind.config = { theme: { extend: { fontFamily: {
+    sans: ['Geist', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+    mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'] } } } };
+</script>
+<style>
+  /* Surfaces */
+  .glass{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.07);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+  .card{transition:transform .4s cubic-bezier(.2,.7,.2,1),border-color .3s,box-shadow .3s}
+  .card:hover{transform:translateY(-4px);border-color:rgba(139,92,246,.5);box-shadow:0 24px 60px -24px rgba(124,58,237,.55)}
+  /* Buttons with soft glow */
+  .btn-p{background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 30px -8px rgba(124,58,237,.8);transition:transform .25s,box-shadow .25s}
+  .btn-p:hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),0 12px 44px -6px rgba(139,92,246,.95)}
+  .btn-g{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:#e4e4e7;transition:background .25s,border-color .25s}
+  .btn-g:hover{background:rgba(255,255,255,.07);border-color:rgba(34,211,238,.4)}
+  /* Backgrounds */
+  .grid-bg{background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse 70% 65% at 50% 0%,#000 25%,transparent 75%);mask-image:radial-gradient(ellipse 70% 65% at 50% 0%,#000 25%,transparent 75%)}
+  .noise{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .headline{background:linear-gradient(180deg,#fff 30%,#a5a3ff 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  /* Icons (Lucide style) */
+  .ic{width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+  .iconbox{display:grid;place-items:center;width:2.75rem;height:2.75rem;border-radius:.75rem;color:#c4b5fd;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.28)}
+  /* Code */
+  .code{font-family:'Geist Mono',ui-monospace,monospace;font-size:12.5px;line-height:1.75;color:#d4d4d8;background:#070707;border:1px solid rgba(255,255,255,.07);border-radius:.75rem;padding:1rem;overflow-x:auto}
+  .k{color:#67e8f9}.s{color:#c4b5fd}.n{color:#f9a8d4}
+  /* One orchestrated entrance, hero only */
+  @keyframes fu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .fu{opacity:0;animation:fu .8s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:var(--d,0s)}
+  @keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,20px)}}
+  .drift{animation:drift 14s ease-in-out infinite}
+  a:focus-visible,button:focus-visible{outline:2px solid #22d3ee;outline-offset:3px;border-radius:.5rem}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.fu{opacity:1;transform:none}}
+</style>
+<noscript><style>.fu{opacity:1}</style></noscript>
+</head>
+
+<body class="bg-[#050505] font-sans text-zinc-400 antialiased selection:bg-violet-500/30 selection:text-white">
+<div class="noise" aria-hidden="true"></div>
+
+<!-- Icon sprite (Lucide-style, stroke inherits currentColor) -->
+<svg width="0" height="0" class="absolute" aria-hidden="true"><defs>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="16" r="1"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
+  <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><path d="M10 2h4"/><path d="M12 14l3-3"/><circle cx="12" cy="14" r="8"/></symbol>
+</defs></svg>
+
+<!-- ============ NAVBAR ============ -->
+<header class="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-[#050505]/70 backdrop-blur-xl">
+  <nav class="mx-auto flex h-16 max-w-6xl items-center justify-between px-5" aria-label="Main">
+    <a href="#top" class="flex items-center gap-2.5 text-[15px] font-semibold tracking-[.18em] text-white">
+      <svg viewBox="0 0 32 32" class="h-6 w-6" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a78bfa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><path d="M4 6h6l6 14 6-14h6L16 28z" fill="url(#lg)"/></svg>
+      VELUM
+    </a>
+    <ul class="hidden items-center gap-8 text-sm md:flex">
+      <li><a class="transition hover:text-white" href="#features">Features</a></li>
+      <li><a class="transition hover:text-white" href="#pricing">Pricing</a></li>
+      <li><a class="transition hover:text-white" href="#docs">Docs</a></li>
+      <li><a class="transition hover:text-white" href="#">Dashboard</a></li>
+    </ul>
+    <div class="flex items-center gap-2">
+      <a href="#pricing" class="btn-p rounded-full px-4 py-2 text-sm font-medium">Get Access</a>
+      <button id="mb" class="grid h-9 w-9 place-items-center rounded-full border border-white/10 md:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="mm"><svg class="ic"><use href="#i-menu"/></svg></button>
+    </div>
+  </nav>
+  <div id="mm" class="hidden border-t border-white/5 bg-[#050505]/95 px-5 py-4 md:hidden">
+    <ul class="grid gap-3 text-sm">
+      <li><a href="#features" class="block py-1 hover:text-white">Features</a></li>
+      <li><a href="#pricing" class="block py-1 hover:text-white">Pricing</a></li>
+      <li><a href="#docs" class="block py-1 hover:text-white">Docs</a></li>
+      <li><a href="#" class="block py-1 hover:text-white">Dashboard</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="top">
+<!-- ============ HERO ============ -->
+<section class="relative overflow-hidden px-5 pb-24 pt-36 sm:pt-40">
+  <div class="grid-bg absolute inset-0" aria-hidden="true"></div>
+  <div class="drift pointer-events-none absolute -top-48 left-1/4 h-[480px] w-[720px] rounded-full bg-violet-600/20 blur-[130px]" aria-hidden="true"></div>
+  <div class="pointer-events-none absolute right-0 top-40 h-[320px] w-[420px] rounded-full bg-cyan-400/10 blur-[120px]" aria-hidden="true"></div>
+
+  <div class="relative mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_.95fr]">
+    <div>
+      <div class="fu glass inline-flex items-center gap-2.5 rounded-full px-3.5 py-1.5 text-xs text-zinc-300">
+        <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400/70"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-cyan-400"></span></span>
+        Auth v3 &bull; Challenge-Response &bull; Edge Network
+      </div>
+      <h1 class="fu headline mt-6 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl" style="--d:.1s">Protect every script. Trust no client.</h1>
+      <p class="fu mt-6 max-w-xl text-lg leading-relaxed text-zinc-400" style="--d:.2s">Military-grade script protection for Roblox developers. VELUM binds each key to a device, proves every request with a signed challenge, and delivers your code from the edge through links that expire in 90 seconds.</p>
+      <div class="fu mt-9 flex flex-wrap gap-3" style="--d:.3s">
+        <a href="#pricing" class="btn-p rounded-full px-6 py-3 text-sm font-medium">Get Started</a>
+        <a href="#docs" class="btn-g rounded-full px-6 py-3 text-sm font-medium">View Documentation</a>
+      </div>
+      <ul class="fu mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-500" style="--d:.4s">
+        <li class="flex items-center gap-2"><svg class="ic h-4 w-4 text-cyan-400"><use href="#i-check"/></svg>HMAC-SHA256 signatures</li>
+        <li class="flex items-center gap-2"><svg class="ic h-4 w-4 text-cyan-400"><use href="#i-check"/></svg>HWID-bound keys</li>
+        <li class="flex items-center gap-2"><svg class="ic h-4 w-4 text-cyan-400"><use href="#i-check"/></svg>90-second signed URLs</li>
+      </ul>
+    </div>
+
+    <!-- The signature moment: the handshake, played line by line -->
+    <div class="fu glass rounded-2xl shadow-[0_30px_80px_-30px_rgba(124,58,237,.5)]" style="--d:.35s">
+      <div class="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+        <span class="h-2.5 w-2.5 rounded-full bg-white/15"></span><span class="h-2.5 w-2.5 rounded-full bg-white/15"></span><span class="h-2.5 w-2.5 rounded-full bg-white/15"></span>
+        <span class="ml-3 font-mono text-xs text-zinc-500">auth v3 handshake</span>
+      </div>
+      <div class="space-y-1 overflow-x-auto p-5 font-mono text-[12.5px] leading-7">
+        <p class="fu text-zinc-200" style="--d:.9s">POST /v3/challenge</p>
+        <p class="fu pl-4" style="--d:1.3s"><span class="text-cyan-300">nonce</span> b7f3a91c04e2&hellip; <span class="text-zinc-600">single-use, 30s</span></p>
+        <p class="fu pt-2 text-zinc-200" style="--d:1.9s">POST /v3/verify</p>
+        <p class="fu pl-4" style="--d:2.3s"><span class="text-cyan-300">signature</span> hmac_sha256(nonce|key|hwid) <span class="text-emerald-400">valid</span></p>
+        <p class="fu pl-4" style="--d:2.7s"><span class="text-cyan-300">script_url</span> signed <span class="text-zinc-600">expires in 90s</span></p>
+        <p class="fu pt-2 text-zinc-200" style="--d:3.3s">POST /v3/session/validate</p>
+        <p class="fu pl-4" style="--d:3.7s"><span class="text-cyan-300">session</span> vs_4e1d92&hellip; <span class="text-emerald-400">active</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section id="features" class="scroll-mt-20 px-5 py-24">
+  <div class="mx-auto max-w-6xl">
+    <h2 class="max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Everything between your script and the wrong hands.</h2>
+    <p class="mt-4 max-w-xl text-zinc-400">Six layers that work together, so a leaked key, a cloned loader or a replayed request never becomes a leaked script.</p>
+
+    <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <article class="glass card rounded-2xl p-6">
+        <div class="iconbox"><svg class="ic"><use href="#i-repeat"/></svg></div>
+        <h3 class="mt-5 text-lg font-medium text-white">Challenge-response authentication</h3>
+        <p class="mt-2 text-sm leading-relaxed">Every login starts with a single-use nonce. Keys are proven with a signature and never travel as a replayable token.</p>
+      </article>
+      <article class="glass card rounded-2xl p-6">
+        <div class="iconbox"><svg class="ic"><use href="#i-cpu"/></svg></div>
+        <h3 class="mt-5 text-lg font-medium text-white">HWID and behavioral anti-sharing</h3>
+        <p class="mt-2 text-sm leading-relaxed">Keys bind to a device fingerprint, and usage patterns flag shared accounts before they spread.</p>
+      </article>
+      <article class="glass card rounded-2xl p-6">
+        <div class="iconbox"><svg class="ic"><use href="#i-lock"/></svg></div>
+        <h3 class="mt-5 text-lg font-medium text-white">Signed script delivery</h3>
+        <p class="mt-2 text-sm leading-relaxed">Scripts are served through signed URLs that expire after 90 seconds and cannot be reused or shared.</p>
+      </article>
+      <article class="glass card rounded-2xl p-6">
+        <div class="iconbox"><svg class="ic"><use href="#i-globe"/></svg></div>
+        <h3 class="mt-5 text-lg font-medium text-white">Edge network</h3>
+        <p class="mt-2 text-sm leading-relaxed">Authentication runs close to your players, so protection adds no noticeable delay to script startup.</p>
+      </article>
+      <article class="glass card rounded-2xl p-6">
+        <div class="iconbox"><svg class="ic"><use href="#i-ban"/></svg></div>
+        <h3 class="mt-5 text-lg font-medium text-white">Auto-ban intelligence</h3>
+        <p class="mt-2 text-sm leading-relaxed">Replay attempts, tampered signatures and key sharing trigger automatic bans you can tune per project.</p>
+      </article>
+      <article class="glass card rounded-2xl p-6">
+        <div class="iconbox"><svg class="ic"><use href="#i-key"/></svg></div>
+        <h3 class="mt-5 text-lg font-medium text-white">Session tokens</h3>
+        <p class="mt-2 text-sm leading-relaxed">Short-lived tokens keep running scripts validated with light heartbeats, and can be revoked instantly.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how" class="scroll-mt-20 px-5 py-24">
+  <div class="mx-auto max-w-6xl">
+    <h2 class="max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Three requests from loader to protected script.</h2>
+    <ol class="relative mt-14 grid gap-5 md:grid-cols-3">
+      <div class="pointer-events-none absolute left-[16%] right-[16%] top-[2.1rem] hidden h-px bg-gradient-to-r from-violet-500/0 via-violet-500/60 to-cyan-400/0 md:block" aria-hidden="true"></div>
+      <li class="glass relative rounded-2xl p-6">
+        <span class="grid h-11 w-11 place-items-center rounded-full border border-violet-400/40 bg-[#0a0a0a] font-mono text-sm text-violet-300">1</span>
+        <h3 class="mt-5 text-lg font-medium text-white">Get challenge</h3>
+        <p class="mt-2 text-sm leading-relaxed">Your loader requests a challenge and receives a single-use nonce that expires in 30 seconds.</p>
+      </li>
+      <li class="glass relative rounded-2xl p-6">
+        <span class="grid h-11 w-11 place-items-center rounded-full border border-violet-400/40 bg-[#0a0a0a] font-mono text-sm text-violet-300">2</span>
+        <h3 class="mt-5 text-lg font-medium text-white">Sign and verify</h3>
+        <p class="mt-2 text-sm leading-relaxed">The loader signs the nonce, key and HWID with HMAC-SHA256. VELUM checks the signature and the device binding.</p>
+      </li>
+      <li class="glass relative rounded-2xl p-6">
+        <span class="grid h-11 w-11 place-items-center rounded-full border border-cyan-300/40 bg-[#0a0a0a] font-mono text-sm text-cyan-300">3</span>
+        <h3 class="mt-5 text-lg font-medium text-white">Receive signed script and session</h3>
+        <p class="mt-2 text-sm leading-relaxed">You get a script URL valid for 90 seconds and a session token for heartbeats. Nothing else is exposed.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ API DOCS ============ -->
+<section id="docs" class="scroll-mt-20 px-5 py-24">
+  <div class="mx-auto max-w-6xl">
+    <h2 class="max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">VELUM Auth v3 API</h2>
+    <p class="mt-4 max-w-xl text-zinc-400">Three JSON endpoints over HTTPS. Base URL <code class="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[13px] text-cyan-300">https://api.velum.dev</code></p>
+
+    <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="glass rounded-xl p-4"><svg class="ic text-violet-300"><use href="#i-hash"/></svg><h3 class="mt-3 text-sm font-medium text-white">Single-use nonce</h3><p class="mt-1 text-sm">Each challenge works once and expires in 30 seconds.</p></div>
+      <div class="glass rounded-xl p-4"><svg class="ic text-violet-300"><use href="#i-shield"/></svg><h3 class="mt-3 text-sm font-medium text-white">HMAC-SHA256</h3><p class="mt-1 text-sm">Requests are signed, so tampering is detected immediately.</p></div>
+      <div class="glass rounded-xl p-4"><svg class="ic text-violet-300"><use href="#i-repeat"/></svg><h3 class="mt-3 text-sm font-medium text-white">Challenge-response</h3><p class="mt-1 text-sm">The raw key is never sent as a reusable credential.</p></div>
+      <div class="glass rounded-xl p-4"><svg class="ic text-violet-300"><use href="#i-timer"/></svg><h3 class="mt-3 text-sm font-medium text-white">Short-lived URLs</h3><p class="mt-1 text-sm">Signed script links expire after 90 seconds.</p></div>
+    </div>
+
+    <!-- Endpoint 1 -->
+    <div class="glass mt-8 rounded-2xl p-5 sm:p-7">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="rounded-md bg-violet-500/15 px-2 py-1 font-mono text-xs font-medium text-violet-300">POST</span>
+        <code class="font-mono text-[15px] text-white">/v3/challenge</code>
+      </div>
+      <p class="mt-3 max-w-2xl text-sm">Request a nonce for a script and device. The nonce is bound to the HWID and expires after 30 seconds.</p>
+      <div class="mt-5 grid gap-4 lg:grid-cols-2">
+        <div><p class="mb-2 text-xs text-zinc-500">Request</p><pre class="code"><code class="json">{
+  "script_id": "scr_8f2a1c",
+  "hwid": "7B1E-44A9-C03D-91F2"
+}</code></pre></div>
+        <div><p class="mb-2 text-xs text-zinc-500">Response <span class="ml-1 text-cyan-300">200 OK</span></p><pre class="code"><code class="json">{
+  "challenge_id": "ch_9d41e7",
+  "nonce": "b7f3a91c04e2d85f",
+  "algorithm": "HMAC-SHA256",
+  "expires_in": 30
+}</code></pre></div>
+      </div>
+    </div>
+
+    <!-- Endpoint 2 -->
+    <div class="glass mt-5 rounded-2xl p-5 sm:p-7">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="rounded-md bg-violet-500/15 px-2 py-1 font-mono text-xs font-medium text-violet-300">POST</span>
+        <code class="font-mono text-[15px] text-white">/v3/verify</code>
+      </div>
+      <p class="mt-3 max-w-2xl text-sm">Send the signature of <code class="font-mono text-cyan-300">nonce|key|hwid</code>. On success you receive a session token and a signed script URL.</p>
+      <div class="mt-5 grid gap-4 lg:grid-cols-2">
+        <div><p class="mb-2 text-xs text-zinc-500">Request</p><pre class="code"><code class="json">{
+  "challenge_id": "ch_9d41e7",
+  "key": "VLM-4F2A-91CC-7D30",
+  "hwid": "7B1E-44A9-C03D-91F2",
+  "signature": "5c0e9b2a71d4f8e3a6b9c1d27e40f5a8"
+}</code></pre></div>
+        <div><p class="mb-2 text-xs text-zinc-500">Response <span class="ml-1 text-cyan-300">200 OK</span></p><pre class="code"><code class="json">{
+  "status": "ok",
+  "session_token": "vs_4e1d92c7a0b3",
+  "script_url": "https://edge.velum.dev/s/scr_8f2a1c?sig=e91f03",
+  "url_expires_in": 90
+}</code></pre></div>
+      </div>
+    </div>
+
+    <!-- Endpoint 3 -->
+    <div class="glass mt-5 rounded-2xl p-5 sm:p-7">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="rounded-md bg-violet-500/15 px-2 py-1 font-mono text-xs font-medium text-violet-300">POST</span>
+        <code class="font-mono text-[15px] text-white">/v3/session/validate</code>
+      </div>
+      <p class="mt-3 max-w-2xl text-sm">Call on an interval while the script runs. A revoked or banned session returns <code class="font-mono text-cyan-300">valid: false</code>.</p>
+      <div class="mt-5 grid gap-4 lg:grid-cols-2">
+        <div><p class="mb-2 text-xs text-zinc-500">Request</p><pre class="code"><code class="json">{
+  "session_token": "vs_4e1d92c7a0b3",
+  "hwid": "7B1E-44A9-C03D-91F2"
+}</code></pre></div>
+        <div><p class="mb-2 text-xs text-zinc-500">Response <span class="ml-1 text-cyan-300">200 OK</span></p><pre class="code"><code class="json">{
+  "valid": true,
+  "expires_in": 3540,
+  "next_heartbeat": 60
+}</code></pre></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRICING ============ -->
+<section id="pricing" class="scroll-mt-20 px-5 py-24">
+  <div class="mx-auto max-w-6xl">
+    <h2 class="max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Simple pricing. Protection included at every tier.</h2>
+    <p class="mt-4 max-w-xl text-zinc-400">All plans include challenge-response auth, HWID binding and signed delivery. Billed monthly, cancel anytime.</p>
+
+    <div class="mt-14 grid items-stretch gap-5 lg:grid-cols-3">
+      <!-- Starter -->
+      <div class="glass card flex flex-col rounded-2xl p-7">
+        <h3 class="text-lg font-medium text-white">Starter</h3>
+        <p class="mt-1 text-sm">For solo developers shipping their first protected script.</p>
+        <p class="mt-6 flex items-baseline gap-1"><span class="text-4xl font-semibold text-white">$99</span><span class="text-sm">/month</span></p>
+        <ul class="mt-6 grid flex-1 content-start gap-3 text-sm">
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>1 protected project</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Up to 500 active keys</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Auth v3 challenge-response</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>HWID binding</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Signed delivery, 90s URLs</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Community support</li>
+        </ul>
+        <a href="#" class="btn-g mt-8 rounded-full py-3 text-center text-sm font-medium">Choose Starter</a>
+      </div>
+
+      <!-- Pro (featured) -->
+      <div class="rounded-2xl bg-gradient-to-b from-violet-500 via-violet-500/40 to-cyan-400/40 p-px shadow-[0_30px_90px_-30px_rgba(139,92,246,.7)] lg:-my-3">
+        <div class="relative flex h-full flex-col rounded-[15px] bg-[#0a0a0f] p-7 lg:py-10">
+          <span class="absolute right-6 top-6 rounded-full bg-violet-500/15 px-2.5 py-1 text-xs font-medium text-violet-300">Most popular</span>
+          <h3 class="text-lg font-medium text-white">Pro</h3>
+          <p class="mt-1 text-sm">For teams selling scripts to a growing community.</p>
+          <p class="mt-6 flex items-baseline gap-1"><span class="text-4xl font-semibold text-white">$199</span><span class="text-sm">/month</span></p>
+          <ul class="mt-6 grid flex-1 content-start gap-3 text-sm">
+            <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Unlimited projects</li>
+            <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Up to 10,000 active keys</li>
+            <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Behavioral anti-sharing</li>
+            <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Auto-ban intelligence</li>
+            <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Session tokens and heartbeats</li>
+            <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Webhooks and audit log</li>
+            <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Priority support</li>
+          </ul>
+          <a href="#" class="btn-p mt-8 rounded-full py-3 text-center text-sm font-medium">Get Pro</a>
+        </div>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="glass card flex flex-col rounded-2xl p-7">
+        <h3 class="text-lg font-medium text-white">Enterprise</h3>
+        <p class="mt-1 text-sm">For studios and resellers with custom security needs.</p>
+        <p class="mt-6 flex items-baseline gap-1"><span class="text-4xl font-semibold text-white">Custom</span></p>
+        <ul class="mt-6 grid flex-1 content-start gap-3 text-sm">
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Unlimited keys and projects</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Dedicated edge capacity</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Custom ban policies</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Role-based access and SSO</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Uptime SLA</li>
+          <li class="flex gap-2.5"><svg class="ic mt-0.5 h-4 w-4 shrink-0 text-cyan-400"><use href="#i-check"/></svg>Dedicated security engineer</li>
+        </ul>
+        <a href="#" class="btn-g mt-8 rounded-full py-3 text-center text-sm font-medium">Contact sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="border-t border-white/5 px-5 py-14">
+  <div class="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+    <div>
+      <a href="#top" class="flex items-center gap-2.5 text-[15px] font-semibold tracking-[.18em] text-white">
+        <svg viewBox="0 0 32 32" class="h-6 w-6" aria-hidden="true"><path d="M4 6h6l6 14 6-14h6L16 28z" fill="#8b5cf6"/></svg>VELUM
+      </a>
+      <p class="mt-4 max-w-xs text-sm">Script protection and key management for Roblox developers who treat their code as a product.</p>
+    </div>
+    <nav aria-label="Product"><h3 class="text-sm font-medium text-white">Product</h3>
+      <ul class="mt-4 grid gap-2.5 text-sm"><li><a class="hover:text-white" href="#features">Features</a></li><li><a class="hover:text-white" href="#pricing">Pricing</a></li><li><a class="hover:text-white" href="#docs">Docs</a></li><li><a class="hover:text-white" href="#">Dashboard</a></li></ul></nav>
+    <nav aria-label="Company"><h3 class="text-sm font-medium text-white">Company</h3>
+      <ul class="mt-4 grid gap-2.5 text-sm"><li><a class="hover:text-white" href="#">About</a></li><li><a class="hover:text-white" href="#">Status</a></li><li><a class="hover:text-white" href="#">Contact</a></li></ul></nav>
+    <nav aria-label="Legal"><h3 class="text-sm font-medium text-white">Legal</h3>
+      <ul class="mt-4 grid gap-2.5 text-sm"><li><a class="hover:text-white" href="#">Terms of Service</a></li><li><a class="hover:text-white" href="#">Privacy Policy</a></li></ul></nav>
+  </div>
+  <div class="mx-auto mt-12 flex max-w-6xl flex-col gap-3 border-t border-white/5 pt-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+    <p>&copy; 2026 VELUM. All rights reserved. Not affiliated with Roblox Corporation.</p>
+    <p class="flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>All systems operational</p>
+  </div>
+</footer>
+
+<script>
+  // Mobile menu
+  const mb = document.getElementById('mb'), mm = document.getElementById('mm');
+  mb.addEventListener('click', () => {
+    const open = mm.classList.toggle('hidden') === false;
+    mb.setAttribute('aria-expanded', open);
+  });
+  mm.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { mm.classList.add('hidden'); mb.setAttribute('aria-expanded', false); }));
+
+  // Lightweight JSON syntax highlighting (no libraries)
+  document.querySelectorAll('code.json').forEach(c => {
+    c.innerHTML = c.textContent
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/("(?:\\.|[^"\\])*")(\s*:)?|\b(?:true|false|null)\b|\b\d+\b/g,
+        (m, s, colon) => s ? (colon ? `<span class="k">${s}</span>${colon}` : `<span class="s">${s}</span>`) : `<span class="n">${m}</span>`);
+  });
+</script>
+</body>
+</html>
